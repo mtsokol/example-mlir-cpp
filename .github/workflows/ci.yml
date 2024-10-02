@@ -1,0 +1,41 @@
+defaults:
+  run:
+    shell: bash -leo pipefail {0}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reproduce:
+    strategy:
+      matrix:
+        directory: ['case_running', 'case_failing']
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+      - uses: mamba-org/setup-micromamba@v1
+        with:
+          environment-file: environment.yml
+          init-shell: >-
+            bash
+          cache-environment: true
+          cache-downloads: true
+          post-cleanup: 'all'
+          create-args: >-
+            python=3.10
+      - name: Build project
+        run: |
+          cd ${{ matrix.directory }}
+          mkdir build && cd build
+          cmake -G Ninja ../
+          ninja
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
